@@ -1,4 +1,5 @@
-# netmem
+netmem
+======
 Basic memory synchronization across the network in Python
 
 This package has a network-synchronized dictionary that runs
@@ -6,10 +7,13 @@ on ```asyncio``` event loops.  It supports binding to the
 dictionary similar to ```tk.Variable()``` and is also compatible
 with ```tkinter``` and its event loops.
 
-## Example
+Example
+-------
 
 Here is the smallest meaningful example I can come up with.
 Run it on two different computers on the same network.
+
+::
 
     import tkinter as tk
     import netmem
