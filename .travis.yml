@@ -1,0 +1,20 @@
+language: python
+python:
+- '3.5'
+- '3.6'
+install:
+- pip install .
+- pip install aiohttp
+# script: coverage run --source netmem -m py.test
+#deploy:
+#  provider: pypi
+#  user: rharder
+#  on:
+#    tags: true
+#    all_branches: true
+#    python: '3.5'
+#  distributions: sdist bdist_wheel
+#  password:
+#    secure:
+#after_success:
+#  coveralls
