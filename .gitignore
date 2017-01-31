@@ -1,6 +1,6 @@
 *.pyc
 build/
 dist/
-pushbullet.py.egg-info/
+*.egg-info/
 .env
 .idea

@@ -9,13 +9,15 @@ with open("./netmem/__version__.py") as version_file:
 
 
 if sys.argv[-1] == 'test':
-    os.system('python setup.py register -r pypitest')
-    os.system('python setup.py sdist upload -r pypitest')
+    print("TEST")
+    os.system('python3 setup.py register -r pypitest')
+    os.system('python3 setup.py sdist upload -r pypitest')
     sys.exit()
 
 if sys.argv[-1] == 'publish':
-    os.system('python setup.py register -r pypi')
-    os.system('python setup.py sdist upload -r pypi')
+    print("PUBLISH")
+    os.system('python3 setup.py register -r pypi')
+    os.system('python3 setup.py sdist upload -r pypi')
     sys.exit()
 
 install_reqs = [
@@ -48,7 +50,7 @@ setup(
         "Intended Audience :: Developers",
         "Programming Language :: Python",
         "Natural Language :: English",
-        "License :: OSI Approved :: Public Domain",
+        #"License :: OSI Approved :: Public Domain",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.5",
         "Topic :: Software Development :: Libraries :: Python Modules",
