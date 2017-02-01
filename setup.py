@@ -1,4 +1,13 @@
 #!/usr/bin/env python
+"""
+Setup for sending netmem package to pypi.
+
+https://pypi.python.org/pypi/netmem
+
+https://pypi.python.org/pypi?%3Aaction=pkg_edit&name=netmem
+
+
+"""
 import os
 import sys
 
@@ -37,7 +46,7 @@ setup(
     version = version,
     author = "Robert Harder",
     author_email = "rob@iharder.net",
-    description = ("A dictionary synchronized across a network."),
+    description = ("A network-synchronized dictionary."),
     license = "Public Domain",
     keywords = "network, memory, synchronize",
     url = "https://github.com/rharder/netmem",
