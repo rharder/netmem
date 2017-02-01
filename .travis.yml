@@ -5,8 +5,8 @@ python:
 install:
 - pip install .
 - pip install aiohttp
-# script: coverage run --source netmem -m py.test
-script: pytest
+script: coverage run --source netmem -m py.test
+# script: pytest
 #deploy:
 #  provider: pypi
 #  user: rharder
