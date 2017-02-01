@@ -2,10 +2,13 @@
 """
 Setup for sending netmem package to pypi.
 
-https://pypi.python.org/pypi/netmem
+Live:
+    https://pypi.python.org/pypi/netmem
+    https://pypi.python.org/pypi?%3Aaction=pkg_edit&name=netmem
 
-https://pypi.python.org/pypi?%3Aaction=pkg_edit&name=netmem
-
+Test:
+    https://testpypi.python.org/pypi/netmem
+    https://testpypi.python.org/pypi?%3Aaction=pkg_edit&name=netmem
 
 """
 import os
@@ -15,7 +18,6 @@ from setuptools import setup
 
 with open("./netmem/__version__.py") as version_file:
     version = version_file.read().split("\"")[1]
-
 
 if sys.argv[-1] == 'test':
     print("TEST")

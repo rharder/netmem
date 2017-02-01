@@ -1,29 +1,43 @@
 netmem
 ======
 
-
 .. image:: https://img.shields.io/travis/rharder/netmem.svg?style=flat-square
-    :target: https://travis-ci.org/rharder/netmem
+:target: https://travis-ci.org/rharder/netmem
     
-Basic memory synchronization across the network in Python
+Basic memory synchronization across the network in Python.
 
 This package has a network-synchronized dictionary that runs
 on ``asyncio`` event loops.  It supports binding to the
 dictionary similar to ``tk.Variable()`` and is also compatible
 with ``tkinter`` and its event loops.
 
-Data Structure
---------------
+Installation
+------------
 
-``NetworkMemory`` subclasses a Python dictionary, so you can access the
-data within it as you do any dictionary object.  Additionally you can
-bind listeners to NetworkMemory (because in fact it subclasses a
-bindable dictionary, which is something I borrowed from other code
-I wrote).
+The easiest way is to just open your favorite terminal and type ::
 
+    pip install pushbullet.py
 
-Examples
---------
+Alternatively you can clone this repo and install it with ::
+
+    python setup.py install
+
+Requirements
+------------
+
+-  The amazing aiohttp library
+-  Python v3.5+
+
+The basis for ``netmem`` is asynchronous IO and event loops, so I
+apologize to Python v2.x users and for that matter, Python v3.4.
+Although Python v3.4 supports ``asyncio``, I really like
+the ``async for`` and ``async with`` constructs introduced in v3.5,
+and I use them in a number of places.  Since Python is already on
+v3.6 at the time of this writing, I do not feel too terribly bad
+leaving v3.4 behind.
+
+Usage
+-----
 
 Here is the smallest meaningful example I can come up with.
 Run it on two different computers on the same network. ::
@@ -67,3 +81,12 @@ The output from this would be the following ::
 Incidentally the underlying ``BindableDict`` class is pretty handy on its own, 
 without even the network synchronizing capabilities.
 
+
+Data Structure
+--------------
+
+``NetworkMemory`` subclasses a Python dictionary, so you can access the
+data within it as you do any dictionary object.  Additionally you can
+bind listeners to NetworkMemory (because in fact it subclasses a
+bindable dictionary, which is something I borrowed from other code
+I wrote).
