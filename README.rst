@@ -59,6 +59,6 @@ The output from this would be the following ::
 
     Update foo:bar
 
-Incidentally the underlying BindableDict class is pretty handy on its own, 
+Incidentally the underlying ``BindableDict`` class is pretty handy on its own, 
 without even the network synchronizing capabilities.
 
