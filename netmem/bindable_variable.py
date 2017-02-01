@@ -8,6 +8,8 @@ This is an extract from the code available at http://github.com/rharder/handy
 
 import logging
 
+import time
+
 __author__ = "Robert Harder"
 __email__ = "rob@iharder.net"
 __date__ = "5 Dec 2016"
@@ -21,6 +23,7 @@ class BindableDict(dict):
         self.log = logging.getLogger(__name__ + '.' + self.__class__.__name__)
         self.__listeners = []
         self._changes = []
+        self._timestamps = {}
         self._suspend_notifications = False
 
     def __getitem__(self, key):
@@ -30,14 +33,24 @@ class BindableDict(dict):
     def __setitem__(self, key, new_val):
         self.set(key, new_val)
 
-    def set(self, key, new_val, force_notify=False):
+    def set(self, key, new_val, force_notify=False, timestamp=None):
         old_val = self.get(key)
-        super().__setitem__(key, new_val)
-        if old_val != new_val or force_notify:
-            self._changes.append((key, old_val, new_val))
-            self._notify_listeners()
+        old_timestamp = self._timestamps.get(key, 0)
+        now = time.time()
 
-    def mark_changed(self, key):
+        # Only make change if timestamp is newer
+        if timestamp is None or now > old_timestamp:
+            self._timestamps[key] = now
+            super().__setitem__(key, new_val)
+
+            # Only make notification if value changed
+            if old_val != new_val or force_notify:
+                # self._changes.append((key, old_val, new_val))
+                self._changes.append({"key": key, "action": "update", "old_val": old_val,
+                                      "new_val": new_val, "timestamp": now})
+                self._notify_listeners()
+
+    def mark_as_changed(self, key, timestamp=None):
         """
         Triggers notification to listeners for a certain key, regardless of
         any change to the key.  The listeners will get their callback with
@@ -49,7 +62,9 @@ class BindableDict(dict):
         :param key: the key to alert listeners to
         """
         val = self.get(key)
-        self._changes.append((key, val, val))
+        timestamp = timestamp or time.time()
+        self._changes.append({"key": key, "action": "update", "old_val": None,
+                              "new_val": val, "timestamp": timestamp})
         self._notify_listeners()
 
     def __repr__(self):
@@ -108,8 +123,14 @@ class BindableDict(dict):
             changes = self._changes.copy()
             self._changes.clear()
             for listener in self.__listeners:
-                for key, old_val, new_val in changes:
-                    listener(self, key, old_val, new_val)
+                # for key, old_val, new_val in changes:
+                for change in changes:
+                    if change["action"] == "update":
+                        key = change["key"]
+                        old_val = change["old_val"]
+                        new_val = change["new_val"]
+                        timestamp = change["timestamp"]
+                        listener(self, key, old_val, new_val)
 
     def __enter__(self):
         """ For use with Python's "with" construct. """

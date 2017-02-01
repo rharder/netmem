@@ -1,6 +1,22 @@
 """
 NetworkMemory objects are descendents of basic Python dictionaries and can be synchronized
 across multiple machines on a network.
+
+
+Websocket protocol dictionary:
+
+{
+    "host" : hostname of source
+    "changes" :  # List of changes to dictionary
+        [
+            {
+                "key": dictionary key that is changed
+                "action": action type - "update", "delete"
+                "value": new value, if needed
+                "timestamp": unix epoch timestamp of change as a float
+            }, ...
+        ]
+
 """
 import asyncio
 import logging
@@ -37,7 +53,7 @@ class NetworkMemory(BindableDict):
         return "{} {} ({})".format(self.__class__.__name__, self.name, str(self))
 
     def connect(self, connector: Connector, loop=None):
-        return connector.connect(self, loop=loop)
+        return connector.connect(self, self, loop=loop)
 
     def connect_on_new_thread(self, connector):
         ioloop = asyncio.new_event_loop()
@@ -58,6 +74,8 @@ class NetworkMemory(BindableDict):
     def connection_lost(self, connector: Connector, exc=None):
         self.log.info("{} : Connection lost. Removing {} ({})".format(repr(self), connector, exc))
         self._connectors.remove(connector)
+        self.log.info("{} : Connectors remaining: {}".format(self, len(self._connectors)))
+        # connector.close()
 
     def connection_error(self, connector: Connector, exc=None):
         self.log.warning("{} : Connection error on {}: {}".format(repr(self), connector, exc))
@@ -66,23 +84,38 @@ class NetworkMemory(BindableDict):
     def message_received(self, connector: Connector, msg: dict):
         self.log.debug("{} : Message received from {}: {}".format(repr(self), connector, msg))
 
-        if "update" in msg:
-            changes = msg["update"]
-            host = str(msg.get("host"))
-            timestamp = float(msg.get("timestamp"))
-            updates = {}
+        host = str(msg.get("host"))
+        with self:
+            for change in msg.get("changes",[]):  # type: dict
+                timestamp = float(change.get("timestamp", 0))
+                action = str(change.get("action", ""))
+                if action == "update":
+                    if "key" in change:
+                        key = str(change["key"])
+                        timestamp = float(change.get("timestamp", 0))
+                        value = change.get("new_val")
+                        self.set(key, value, timestamp=timestamp)
+                    else:
+                        self.log.error("{} : Received an update with no key specified: {}".format(repr(self), change))
 
-            for key, old_val, new_val in changes:
-                if timestamp > self._timestamps.get(key, 0):
-                    self.log.debug("{} : Received fresh network data from {}: {} = {}"
-                                   .format(repr(self), host, key, new_val))
-                    updates[key] = new_val
-                    self._timestamps[key] = timestamp
-                else:
-                    self.log.debug("{} : Received stale network data from {}: {} = {}"
-                                   .format(repr(self), host, key, new_val))
 
-            self.update(updates)
+        # if "update" in msg:
+        #     changes = msg["update"]
+        #     host = str(msg.get("host"))
+        #     timestamp = float(msg.get("timestamp"))
+        #     updates = {}
+        #
+        #     for key, old_val, new_val in changes:
+        #         if timestamp > self._timestamps.get(key, 0):
+        #             self.log.debug("{} : Received fresh network data from {}: {} = {}"
+        #                            .format(repr(self), host, key, new_val))
+        #             updates[key] = new_val
+        #             self._timestamps[key] = timestamp
+        #         else:
+        #             self.log.debug("{} : Received stale network data from {}: {} = {}"
+        #                            .format(repr(self), host, key, new_val))
+        #
+        #     self.update(updates)
 
     # End ConnectorListener methods
     # ########
@@ -91,12 +124,10 @@ class NetworkMemory(BindableDict):
 
         if not self._suspend_notifications:
             changes = self._changes.copy()
-            timestamp = time.time()
             if len(changes) > 0:
-                data = {"update": changes, "timestamp": timestamp, "host": self.name}
+                data = {"changes": changes, "host": self.name}
                 for connector in self._connectors.copy():  # type: Connector
-                    # connector.loop.call_soon(connector.send_message, data)
-                    self.log.info("{} : Notifying connector {}".format(repr(self), connector))
+                    self.log.info("{} : Notifying connector {}: {}".format(repr(self), connector, data))
                     connector.send_message(data)
 
         super()._notify_listeners()

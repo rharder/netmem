@@ -20,7 +20,7 @@ class Connector(object):
         self.listener = None  # type: ConnectorListener
         self.loop = None  # type: asyncio.BaseEventLoop
 
-    def connect(self, listener, loop: asyncio.BaseEventLoop = None):
+    def connect(self, listener, netmem_dict, loop: asyncio.BaseEventLoop = None):
         """
         Called by the NetworkMemory object when its own connect() function is called.
 
@@ -37,6 +37,7 @@ class Connector(object):
         :rtype: Connector
         """
         self.listener = listener
+        self.netmem = netmem_dict
         self.loop = loop or asyncio.get_event_loop()
 
         return self

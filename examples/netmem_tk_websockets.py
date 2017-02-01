@@ -17,7 +17,7 @@ __license__ = "Public Domain"
 
 
 # During development:
-# logging.basicConfig(level=logging.ERROR)
+logging.basicConfig(level=logging.INFO)
 # logging.getLogger(__name__).setLevel(logging.INFO)
 # logging.getLogger("netmem").setLevel(logging.INFO)
 
@@ -88,7 +88,7 @@ def main():
     program1 = NetMemApp(tk1, conn1)
 
     tk2 = tk.Toplevel()
-    conn2 = netmem.WsClientConnector(url=conn1.url)
+    conn2 = netmem.WsClientConnector(url=conn1.url_ws_updates)
     program2 = NetMemApp(tk2, conn2)
 
     tk1.mainloop()

@@ -29,8 +29,8 @@ class UdpConnector(Connector):
         return "{}(local_addr={}, remote_addr={})".format(
             self.__class__.__name__, self.local_addr, self.remote_addr)
 
-    def connect(self, listener: ConnectorListener, loop: asyncio.BaseEventLoop = None) -> Connector:
-        super().connect(listener, loop)
+    def connect(self, listener: ConnectorListener, netmem_dict, loop: asyncio.BaseEventLoop=None) -> Connector:
+        super().connect(listener, netmem_dict, loop=loop)
 
         if self.new_thread:
             self.loop = asyncio.new_event_loop()
