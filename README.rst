@@ -1,5 +1,10 @@
 netmem
 ======
+
+
+.. image:: https://img.shields.io/travis/rharder/netmem.svg?style=flat-square
+    :target: https://travis-ci.org/rharder/netmem
+    
 Basic memory synchronization across the network in Python
 
 This package has a network-synchronized dictionary that runs
