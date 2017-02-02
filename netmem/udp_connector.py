@@ -15,12 +15,11 @@ __license__ = "Public Domain"
 
 
 class UdpConnector(Connector):
-    def __init__(self, local_addr: (str, int) = None, remote_addr: (str, int) = None):  # , new_thread: bool = False):
+    def __init__(self, local_addr: (str, int) = None, remote_addr: (str, int) = None):
         super().__init__()
 
         self.local_addr = local_addr or ("225.0.0.1", 9999)
         self.remote_addr = remote_addr or self.local_addr
-        # self.new_thread = new_thread
 
         self.loop = None  # type: asyncio.BaseEventLoop
         self._transport = None  # type: asyncio.DatagramTransport
