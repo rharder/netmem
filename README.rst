@@ -3,6 +3,7 @@ netmem
 
 .. image:: https://img.shields.io/travis/rharder/netmem.svg?style=flat-square
     :target: https://travis-ci.org/rharder/netmem
+    :alt: build status
 
 Basic memory synchronization across the network in Python.
 
