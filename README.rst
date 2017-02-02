@@ -23,7 +23,7 @@ Installation
 
 The easiest way is to just open your favorite terminal and type ::
 
-    pip install pushbullet.py
+    pip install netmem
 
 Alternatively you can clone this repo and install it with ::
 
