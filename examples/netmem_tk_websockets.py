@@ -29,7 +29,7 @@ class NetMemApp():
         self.log = logging.getLogger(__name__)
 
         # Data
-        self.netmem = netmem.NetworkMemory(name=repr(connector))
+        self.netmem = netmem.NetworkMemory()#name=repr(connector))
         self.key_var = tk.StringVar()
         self.val_var = tk.StringVar()
         self.data_var = tk.StringVar()

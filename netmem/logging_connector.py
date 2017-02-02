@@ -3,7 +3,7 @@
 import asyncio
 import logging
 
-from .connector import Connector
+from .connector import Connector, ConnectorListener
 
 __author__ = "Robert Harder"
 __email__ = "rob@iharder.net"
@@ -20,7 +20,7 @@ class LoggingConnector(Connector):
         super().__init__()
         self.log.setLevel(logging.DEBUG)
 
-    def connect(self, listener, loop: asyncio.BaseEventLoop = None):
+    def connect(self, listener:ConnectorListener, netmem_dict, loop: asyncio.BaseEventLoop = None):
         super().connect(listener, loop)
         self.log.info("Connected.")
         self.listener.connection_made(self)

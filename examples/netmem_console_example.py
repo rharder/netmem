@@ -41,20 +41,20 @@ def example_NetworkMemory():
 
     # Connect just mem1 and mem2 together using multicast on local machines
     # : Uncomment below to try it
-    # mem1.connect(netmem.UdpConnector(local_addr=("225.0.0.1", 9991), remote_addr=("225.0.0.2", 9992)))
-    # mem2.connect(netmem.UdpConnector(local_addr=("225.0.0.2", 9992), remote_addr=("225.0.0.1", 9991)))
+    mem1.connect(netmem.UdpConnector(local_addr=("225.0.0.1", 9991), remote_addr=("225.0.0.2", 9992)))
+    mem2.connect(netmem.UdpConnector(local_addr=("225.0.0.2", 9992), remote_addr=("225.0.0.1", 9991)))
 
     # The LoggingConnector simply logs changes to the memory.  It does not listen for changes from anything.
     # : Uncomment below to try it
-    # mem1.connect(LoggingConnector())
+    mem1.connect(netmem.LoggingConnector())
 
     # Connect three together with websockets, one acting as the server and the other as clients.
     # The websocket connectors support two-way communication, so even though one is hosting the
     # http server, all three with be notified of changes to each other.
     # : Uncomment below to try it
-    wss = mem1.connect(netmem.WsServerConnector(port=8080))
-    mem2.connect(netmem.WsClientConnector(url=wss.url))
-    mem3.connect(netmem.WsClientConnector(url=wss.url))
+    # wss = mem1.connect(netmem.WsServerConnector(port=8080))
+    # mem2.connect(netmem.WsClientConnector(url=wss.url_ws_updates))
+    # mem3.connect(netmem.WsClientConnector(url=wss.url_ws_updates))
 
     async def prompt():
         await asyncio.sleep(1)

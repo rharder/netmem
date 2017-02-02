@@ -2,6 +2,7 @@
 
 import asyncio
 import os
+import socket
 
 import aiohttp
 from aiohttp import web
@@ -11,7 +12,7 @@ from .connector import Connector, ConnectorListener
 
 __author__ = "Robert Harder"
 __email__ = "rob@iharder.net"
-__date__ = "20 Jan 2017"
+__date__ = "2 Feb 2017"
 __license__ = "Public Domain"
 
 
@@ -20,7 +21,7 @@ class WsServerConnector(Connector):
     WS_WHOLE = "/ws_whole"
     HTML_VIEW = "/"
 
-    def __init__(self, host="127.0.0.1", port=8080, ssl_context=None, netmem_dict:dict=None):
+    def __init__(self, host="0.0.0.0", port=8080, ssl_context=None, netmem_dict:dict=None):
         super().__init__()
 
         self.host = host
@@ -28,15 +29,15 @@ class WsServerConnector(Connector):
         self.ssl_context = ssl_context
         self.netmem = netmem_dict  # Reference to the hosting networkmemory
 
-        self.app = None  # type: web.Application
-        self.handler = None  # type: web.Server
-        self.srv = None  # type: asyncio.base_events.Server
-        self.active_ws_updates_sockets = []  # type: [web.WebSocketResponse]
-        self.active_ws_whole_sockets = []  # type: [web.WebSocketResponse]
+        self._app = None  # type: web.Application
+        self._handler = None  # type: web.Server
+        self._srv = None  # type: asyncio.base_events.Server
+        self._active_ws_updates_sockets = []  # type: [web.WebSocketResponse]
+        self._active_ws_whole_sockets = []  # type: [web.WebSocketResponse]
 
         scheme = 'https' if self.ssl_context else 'http'
         url = URL('{}://localhost'.format(scheme))
-        self.url_base = url.with_host(self.host).with_port(self.port)
+        self.url_base = url.with_host(socket.gethostname()).with_port(self.port)
 
         self.url_ws_updates = self.url_base.join(URL(WsServerConnector.WS_UPDATES))
         self.url_ws_whole = self.url_base.join(URL(WsServerConnector.WS_WHOLE))
@@ -53,18 +54,18 @@ class WsServerConnector(Connector):
         super().connect(listener, netmem_dict, loop=loop)
 
         async def _connect():
-            self.app = web.Application(loop=self.loop)
-            self.app.router.add_get(WsServerConnector.WS_UPDATES, self.ws_updates_handler)
-            self.app.router.add_get(WsServerConnector.WS_WHOLE, self.ws_whole_handler)
-            self.app.router.add_get(WsServerConnector.HTML_VIEW, self.html_view_handler)
+            self._app = web.Application(loop=self.loop)
+            self._app.router.add_get(WsServerConnector.WS_UPDATES, self.ws_updates_handler)
+            self._app.router.add_get(WsServerConnector.WS_WHOLE, self.ws_whole_handler)
+            self._app.router.add_get(WsServerConnector.HTML_VIEW, self.html_view_handler)
 
             # Provide an HTML page showing activity?
             # self.log.info("{} : Serving html view at {}".format(self, self.url_html_view))
 
-            await self.app.startup()
-            self.handler = self.app.make_handler()
-            self.srv = await self.loop.create_server(self.handler, host=self.host,
-                                                     port=self.port, ssl=self.ssl_context)
+            await self._app.startup()
+            self._handler = self._app.make_handler()
+            self._srv = await self.loop.create_server(self._handler, host=self.host,
+                                                      port=self.port, ssl=self.ssl_context)
             self.log.info("{} : Websocket server listening".format(self))
             self.listener.connection_made(self)  # Must notify NetworkMemory
 
@@ -72,12 +73,12 @@ class WsServerConnector(Connector):
         return self
 
     def send_message(self, msg: dict):
-        self.log.debug("{} : Sending update to {} connected clients".format(self, len(self.active_ws_updates_sockets)))
-        for ws in self.active_ws_updates_sockets.copy():  # type: web.WebSocketResponse
+        self.log.debug("{} : Sending update to {} connected clients".format(self, len(self._active_ws_updates_sockets)))
+        for ws in self._active_ws_updates_sockets.copy():  # type: web.WebSocketResponse
             ws.send_json(msg)
 
         if self.netmem is not None:
-            for ws in self.active_ws_whole_sockets.copy():  # type: web.WebSocketResponse
+            for ws in self._active_ws_whole_sockets.copy():  # type: web.WebSocketResponse
                 ws.send_json(self.netmem)
 
     def close(self):
@@ -85,11 +86,11 @@ class WsServerConnector(Connector):
 
         async def _close():
             self.log.debug("{} : Issuing close commands".format(self))
-            self.srv.close()
-            await self.srv.wait_closed()
-            await self.app.shutdown()
-            await self.handler.shutdown()
-            await self.app.cleanup()
+            self._srv.close()
+            await self._srv.wait_closed()
+            await self._app.shutdown()
+            await self._handler.shutdown()
+            await self._app.cleanup()
             self.listener.connection_lost(self, "closed upon request")
 
         asyncio.run_coroutine_threadsafe(_close(), self.loop)
@@ -97,7 +98,7 @@ class WsServerConnector(Connector):
     async def ws_updates_handler(self, request):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
-        self.active_ws_updates_sockets.append(ws)
+        self._active_ws_updates_sockets.append(ws)
         self.log.info("{} : Incoming client connected to websocket {}".format(self, id(ws)))
 
         exc = None
@@ -119,13 +120,13 @@ class WsServerConnector(Connector):
         finally:
             self.log.info("{} : Client disconnected from websocket connection {}".format(self, id(ws)))
             ws.close()
-            self.active_ws_updates_sockets.remove(ws)
+            self._active_ws_updates_sockets.remove(ws)
         return ws
 
     async def ws_whole_handler(self, request):
         ws = web.WebSocketResponse()
         await ws.prepare(request)
-        self.active_ws_whole_sockets.append(ws)
+        self._active_ws_whole_sockets.append(ws)
         self.log.info("{} : Incoming client connected to websocket {}".format(self, id(ws)))
 
         exc = None
@@ -151,7 +152,7 @@ class WsServerConnector(Connector):
         finally:
             self.log.info("{} : Client disconnected from websocket connection {}".format(self, id(ws)))
             ws.close()
-            self.active_ws_whole_sockets.remove(ws)
+            self._active_ws_whole_sockets.remove(ws)
         return ws
 
     async def html_view_handler(self, request):
