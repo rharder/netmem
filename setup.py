@@ -61,7 +61,7 @@ setup(
         "Intended Audience :: Developers",
         "Programming Language :: Python",
         "Natural Language :: English",
-        #"License :: OSI Approved :: Public Domain",
+        "License :: Public Domain",
         "Programming Language :: Python :: 3",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
