@@ -15,12 +15,12 @@ __license__ = "Public Domain"
 
 
 class UdpConnector(Connector):
-    def __init__(self, local_addr: (str, int) = None, remote_addr: (str, int) = None, new_thread: bool = False):
+    def __init__(self, local_addr: (str, int) = None, remote_addr: (str, int) = None):  # , new_thread: bool = False):
         super().__init__()
 
         self.local_addr = local_addr or ("225.0.0.1", 9999)
         self.remote_addr = remote_addr or self.local_addr
-        self.new_thread = new_thread
+        # self.new_thread = new_thread
 
         self.loop = None  # type: asyncio.BaseEventLoop
         self._transport = None  # type: asyncio.DatagramTransport
@@ -29,48 +29,36 @@ class UdpConnector(Connector):
         return "{}(local_addr={}, remote_addr={})".format(
             self.__class__.__name__, self.local_addr, self.remote_addr)
 
-    def connect(self, listener: ConnectorListener, netmem_dict, loop: asyncio.BaseEventLoop=None) -> Connector:
+    def connect(self, listener: ConnectorListener, netmem_dict, loop: asyncio.BaseEventLoop = None) -> Connector:
         super().connect(listener, netmem_dict, loop=loop)
 
-        if self.new_thread:
-            self.loop = asyncio.new_event_loop()
+        async def _connect():
+            """ Used internally to connect on the appropriate event loop. """
 
-            def _run():
-                asyncio.set_event_loop(self.loop)
-                self.loop.run_forever()
+            # How to make Python listen to multicast
+            local_is_multicast = ipaddress.ip_address(self.local_addr[0]).is_multicast
+            if local_is_multicast:
+                def _make_sock():
+                    m_addr, port = self.local_addr
+                    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+                    sock.bind(('', port))
+                    group = socket.inet_aton(m_addr)
+                    mreq = struct.pack('4sL', group, socket.INADDR_ANY)
+                    sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
+                    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+                    # sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+                    return sock
 
-            t = threading.Thread(target=_run)
-            t.daemon = True
-            t.start()
+                trans, proto = await self.loop.create_datagram_endpoint(lambda: self, sock=_make_sock())
+            else:
+                # Not multicast
+                trans, proto = await self.loop.create_datagram_endpoint(lambda: self, local_addr=self.local_addr)
 
-        asyncio.run_coroutine_threadsafe(self._connect(), loop=self.loop)
+            assert trans is self._transport
+            assert proto is self
+
+        asyncio.run_coroutine_threadsafe(_connect(), loop=self.loop)
         return self
-
-    @asyncio.coroutine
-    def _connect(self):
-        """ Used internally to connect on the appropriate event loop. """
-
-        # How to make Python listen to multicast
-        local_is_multicast = ipaddress.ip_address(self.local_addr[0]).is_multicast
-        if local_is_multicast:
-            def _make_sock():
-                m_addr, port = self.local_addr
-                sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-                sock.bind(('', port))
-                group = socket.inet_aton(m_addr)
-                mreq = struct.pack('4sL', group, socket.INADDR_ANY)
-                sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
-                sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-                # sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
-                return sock
-
-            trans, proto = yield from self.loop.create_datagram_endpoint(lambda: self, sock=_make_sock())
-        else:
-            # Not multicast
-            trans, proto = yield from self.loop.create_datagram_endpoint(lambda: self, local_addr=self.local_addr)
-
-        assert trans is self._transport
-        assert proto is self
 
     def close(self):
         self.log.debug("{} : close() called".format(self))
