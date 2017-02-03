@@ -82,7 +82,6 @@ class TicTacToeApp:
             for x in range(3):
                 for y in range(3):
                     self.netmem["{}:{}".format(x, y)] = " "
-                    # self._grid[x][y].config("state", tk.NORMAL)
                     self._grid_buttons[x][y]["state"] = tk.NORMAL
             self.netmem[self.CURRENT_PLAYER_NUM] = 1
 
@@ -153,17 +152,20 @@ class TicTacToeApp:
         return False
 
 def main():
-    tk1 = tk.Tk()
-    program1 = TicTacToeApp(tk1, netmem.UdpConnector(local_addr=("225.0.0.1", 9991),
-                                                     remote_addr=("225.0.0.2", 9992)))
+    print("Run on two different computers on the same subnet.")
 
-    tk2 = tk.Toplevel()
-    program2 = TicTacToeApp(tk2, netmem.UdpConnector(local_addr=("225.0.0.2", 9992),
-                                                     remote_addr=("225.0.0.1", 9991)))
+    tk1 = tk.Tk()
+    program1 = TicTacToeApp(tk1, netmem.UdpConnector(local_addr=("225.0.0.1", 9991)))
+    # program1 = TicTacToeApp(tk1, netmem.UdpConnector(local_addr=("225.0.0.1", 9991),
+    #                                                  remote_addr=("225.0.0.2", 9992)))
+
+    # tk2 = tk.Toplevel()
+    # program2 = TicTacToeApp(tk2, netmem.UdpConnector(local_addr=("225.0.0.2", 9992),
+    #                                                  remote_addr=("225.0.0.1", 9991)))
 
     # Hack, just to watch the memory
     ws_conn = netmem.WsServerConnector()
-    program2.netmem.connect_on_new_thread(ws_conn)
+    program1.netmem.connect_on_new_thread(ws_conn)
     print("View memory at {}".format(ws_conn.url_html_view))
 
     tk1.mainloop()
