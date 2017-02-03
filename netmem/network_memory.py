@@ -20,9 +20,7 @@ Websocket protocol dictionary:
 """
 import asyncio
 import logging
-import socket
 import threading
-import time
 
 from .bindable_variable import BindableDict
 from .connector import Connector
@@ -35,6 +33,7 @@ __license__ = "Public Domain"
 
 class NetworkMemory(BindableDict):
     NAME_COUNTER = 1
+
     def __init__(self, **kwargs):
         if "name" in kwargs:
             self.name = kwargs["name"]

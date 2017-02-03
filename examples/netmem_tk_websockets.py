@@ -79,7 +79,7 @@ class NetMemApp():
             self.netmem.set(key, val)
 
     def memory_updated(self, netmem_dict: netmem.NetworkMemory, key, old_val, new_val):
-        self.data_var.set(str(netmem_dict))
+        self.data_var.set(str(netmem_dict))  # Dump whole dictionary
 
 
 def main():
