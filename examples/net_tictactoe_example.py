@@ -36,6 +36,7 @@ class TicTacToeApp:
 
         # Connections
         self.netmem.connect_on_new_thread(connector)
+        self.netmem.add_listener(self._netmem_changed)
         self.reset_game()
 
     def create_widgets(self):
@@ -69,7 +70,7 @@ class TicTacToeApp:
             for y in range(3):
                 var = self.netmem.tk_var("{}:{}".format(x, y))
                 self._grid_buttons[x][y] = tk.Button(gridframe, textvariable=var,
-                                                     command=partial(self.grid_button_clicked, x, y))
+                                                     command=partial(self._grid_button_clicked, x, y))
                 self._grid_buttons[x][y].grid(row=y, column=x, sticky="nsew")
         row += 1
 
@@ -77,21 +78,31 @@ class TicTacToeApp:
         self.reset_game()
 
     def reset_game(self):
-        for x in range(3):
-            for y in range(3):
-                self.netmem["{}:{}".format(x, y)] = " "
-                # self._grid[x][y].config("state", tk.NORMAL)
-                self._grid_buttons[x][y]["state"] = tk.NORMAL
-        self.netmem[self.CURRENT_PLAYER_NUM] = 1
+        with self.netmem:
+            for x in range(3):
+                for y in range(3):
+                    self.netmem["{}:{}".format(x, y)] = " "
+                    # self._grid[x][y].config("state", tk.NORMAL)
+                    self._grid_buttons[x][y]["state"] = tk.NORMAL
+            self.netmem[self.CURRENT_PLAYER_NUM] = 1
 
-    def grid_button_clicked(self, x, y):
+    def _grid_button_clicked(self, x, y):
         print("grid_button_clicked x={}, y={}".format(x, y))
-        curr_ply_num = self.netmem[self.CURRENT_PLAYER_NUM]
-        marker = self.MARKERS[curr_ply_num]
-        self.netmem["{}:{}".format(x, y)] = marker
-        self.netmem[self.CURRENT_PLAYER_NUM] = (curr_ply_num % 2) + 1
-        self._grid_buttons[x][y]["state"] = tk.DISABLED
-        winner = self.check_if_win()
+        if self.netmem.get("{}:{}".format(x,y), "") not in self.MARKERS:
+            curr_ply_num = self.netmem[self.CURRENT_PLAYER_NUM]
+            marker = self.MARKERS[curr_ply_num]
+            self.netmem["{}:{}".format(x, y)] = marker
+            self.netmem[self.CURRENT_PLAYER_NUM] = (curr_ply_num % 2) + 1
+            # self._grid_buttons[x][y]["state"] = tk.DISABLED
+            winner = self._check_if_win()
+            if winner:
+                print("WINNER", winner)
+                for x in range(3):
+                    for y in range(3):
+                        self._grid_buttons[x][y]["state"] = tk.DISABLED
+
+    def _netmem_changed(self, nm, key, old_val, new_val):
+        winner = self._check_if_win()
         if winner:
             print("WINNER", winner)
             for x in range(3):
@@ -131,7 +142,7 @@ class TicTacToeApp:
             markers.append(self.netmem["{}:{}".format(xy, xy)])
         return self._three_win(markers)
 
-    def check_if_win(self):
+    def _check_if_win(self):
         for x in range(3):
             for y in range(3):
                 wins = [self._vertical_win(x), self._horizontal_win(y),
