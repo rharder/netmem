@@ -1,12 +1,14 @@
 netmem
 ======
 
-.. image:: https://img.shields.io/pypi/v/netmem.svg
-    :target: https://pypi.python.org/pypi/netmem
-    :alt: current version on PyPI
 .. image:: https://img.shields.io/pypi/pyversions/netmem.svg
     :target: https://pypi.python.org/pypi/netmem
     :alt: Python versions supported
+
+.. image:: https://img.shields.io/pypi/v/netmem.svg
+    :target: https://pypi.python.org/pypi/netmem
+    :alt: current version on PyPI
+
 .. image:: https://img.shields.io/travis/rharder/netmem.svg?style=flat-square
     :target: https://travis-ci.org/rharder/netmem
     :alt: build status
