@@ -4,6 +4,8 @@ import logging
 
 import sys
 
+# import asyncpushbullet
+
 import netmem
 
 __author__ = "Robert Harder"
@@ -11,7 +13,7 @@ __email__ = "rob@iharder.net"
 __date__ = "31 Jan 2017"
 __license__ = "Public Domain"
 
-# logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.DEBUG)
 # logging.getLogger(__name__).setLevel(logging.DEBUG)
 
 
@@ -46,7 +48,7 @@ def example_NetworkMemory():
 
     # The LoggingConnector simply logs changes to the memory.  It does not listen for changes from anything.
     # : Uncomment below to try it
-    mem1.connect(netmem.LoggingConnector())
+    # mem1.connect(netmem.LoggingConnector())
 
     # Connect three together with websockets, one acting as the server and the other as clients.
     # The websocket connectors support two-way communication, so even though one is hosting the
@@ -56,16 +58,22 @@ def example_NetworkMemory():
     # mem2.connect(netmem.WsClientConnector(url=wss.url_ws_updates))
     # mem3.connect(netmem.WsClientConnector(url=wss.url_ws_updates))
 
+    # Try Pushbullet Connector
+    # : Uncomment below to try it
+    # api_key = ""
+    # mem1.connect(netmem.PushbulletConnector(api_key, device_nickname="netmem"), loop=loop)
+    # mem2.connect(netmem.PushbulletConnector(api_key, device_nickname="netmem"), loop=loop)
+
     async def prompt():
-        await asyncio.sleep(1)
+        await asyncio.sleep(3)
         while True:
             key = input("Key? ")
             if key == "":
-                await asyncio.sleep(0.5)
+                await asyncio.sleep(1)
                 continue
             value = input("Value? ")
             mem1.set(key, value)
-            await asyncio.sleep(0.5)  # Because input() locks up the event loop, when need to yield some time
+            await asyncio.sleep(1)  # Because input() locks up the event loop, when need to yield some time
 
     asyncio.ensure_future(prompt())
 

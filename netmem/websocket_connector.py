@@ -21,13 +21,13 @@ class WsServerConnector(Connector):
     WS_WHOLE = "/ws_whole"
     HTML_VIEW = "/"
 
-    def __init__(self, host="0.0.0.0", port=8080, ssl_context=None, netmem_dict:dict=None):
+    def __init__(self, host="0.0.0.0", port=8080, ssl_context=None):#, netmem_dict:dict=None):
         super().__init__()
 
         self.host = host
         self.port = port
         self.ssl_context = ssl_context
-        self.netmem = netmem_dict  # Reference to the hosting networkmemory
+        # self.netmem = netmem_dict  # Reference to the hosting networkmemory
 
         self._app = None  # type: web.Application
         self._handler = None  # type: web.Server
