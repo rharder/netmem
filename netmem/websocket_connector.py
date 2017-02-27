@@ -8,6 +8,7 @@ import aiohttp
 from aiohttp import web
 from yarl import URL
 
+from netmem.websocket_server import WsServer
 from .connector import Connector, ConnectorListener
 
 __author__ = "Robert Harder"
@@ -21,42 +22,55 @@ class WsServerConnector(Connector):
     WS_WHOLE = "/ws_whole"
     HTML_VIEW = "/"
 
-    def __init__(self, host="0.0.0.0", port=8080, ssl_context=None):#, netmem_dict:dict=None):
+    def __init__(self, host="0.0.0.0", port=8080, ssl_context=None):
         super().__init__()
 
         self.host = host
         self.port = port
         self.ssl_context = ssl_context
-        # self.netmem = netmem_dict  # Reference to the hosting networkmemory
 
         self._app = None  # type: web.Application
         self._handler = None  # type: web.Server
         self._srv = None  # type: asyncio.base_events.Server
-        self._active_ws_updates_sockets = []  # type: [web.WebSocketResponse]
-        self._active_ws_whole_sockets = []  # type: [web.WebSocketResponse]
 
-        scheme = 'https' if self.ssl_context else 'http'
-        url = URL('{}://localhost'.format(scheme))
-        self.url_base = url.with_host(socket.gethostname()).with_port(self.port)
+        # Websocket server to handle updates to netmem
+        self._ws_server_updates = WsServer()  # type: WsServer
+        self._ws_server_updates.on_message = self.on_update_message
 
-        self.url_ws_updates = self.url_base.join(URL(WsServerConnector.WS_UPDATES))
-        self.url_ws_whole = self.url_base.join(URL(WsServerConnector.WS_WHOLE))
-        self.url_html_view = self.url_base.join(URL(WsServerConnector.HTML_VIEW))
+        # Websocket server to handle complete echoing of entire netmem contents
+        self._ws_server_whole = WsServer()  # type: WsServer
+        self._ws_server_whole.on_websocket = self.on_whole_websocket
+
+        ht_scheme = 'https' if self.ssl_context else 'http'
+        ws_scheme = 'wss' if self.ssl_context else 'ws'
+        ht_url = URL('{}://localhost'.format(ht_scheme))
+        ws_url = URL('{}://localhost'.format(ws_scheme))
+        self.ht_url_base = ht_url.with_host(socket.gethostname()).with_port(self.port)
+        self.ws_url_base = ws_url.with_host(socket.gethostname()).with_port(self.port)
+
+        # self.url_ws_updates = self.ws_url_base.join(URL(WsServerConnector.WS_UPDATES))  # Doesn't join right
+        # self.url_ws_whole = self.ws_url_base.join(URL(WsServerConnector.WS_WHOLE))
+        self.url_ws_updates = URL(str(self.ws_url_base) + WsServerConnector.WS_UPDATES)
+        self.url_ws_whole = URL(str(self.ws_url_base) + WsServerConnector.WS_WHOLE)
+
+        self.url_html_view = self.ht_url_base.join(URL(WsServerConnector.HTML_VIEW))
 
         self.log.info("{} : Hosting html view at {}".format(self, self.url_html_view))
         self.log.info("{} : Hosting websocket memory updates at {}".format(self, self.url_ws_updates))
         self.log.info("{} : Hosting websocket memory complete reflection at {}".format(self, self.url_ws_whole))
 
     def __repr__(self):
-        return "{}({})".format(self.__class__.__name__, self.url_base)
+        return "{}({})".format(self.__class__.__name__, self.ht_url_base)
 
-    def connect(self, listener: ConnectorListener, netmem_dict, loop: asyncio.BaseEventLoop=None) -> Connector:
+    def connect(self, listener: ConnectorListener, netmem_dict, loop: asyncio.BaseEventLoop = None) -> Connector:
         super().connect(listener, netmem_dict, loop=loop)
 
         async def _connect():
             self._app = web.Application(loop=self.loop)
-            self._app.router.add_get(WsServerConnector.WS_UPDATES, self.ws_updates_handler)
-            self._app.router.add_get(WsServerConnector.WS_WHOLE, self.ws_whole_handler)
+
+            self._app.router.add_get(WsServerConnector.WS_UPDATES, self._ws_server_updates.websocket_handler)
+            self._app.router.add_get(WsServerConnector.WS_WHOLE, self._ws_server_whole.websocket_handler)
+
             self._app.router.add_get(WsServerConnector.HTML_VIEW, self.html_view_handler)
 
             # Provide an HTML page showing activity?
@@ -73,13 +87,8 @@ class WsServerConnector(Connector):
         return self
 
     def send_message(self, msg: dict):
-        self.log.debug("{} : Sending update to {} connected clients".format(self, len(self._active_ws_updates_sockets)))
-        for ws in self._active_ws_updates_sockets.copy():  # type: web.WebSocketResponse
-            ws.send_json(msg)
-
-        if self.netmem is not None:
-            for ws in self._active_ws_whole_sockets.copy():  # type: web.WebSocketResponse
-                ws.send_json(self.netmem)
+        self._ws_server_updates.broadcast_json(msg)  # update
+        self._ws_server_whole.broadcast_json(self.netmem)  # entire contents
 
     def close(self):
         self.log.info("{} : Attempting to close websocket server".format(self))
@@ -88,72 +97,28 @@ class WsServerConnector(Connector):
             self.log.debug("{} : Issuing close commands".format(self))
             self._srv.close()
             await self._srv.wait_closed()
+
+            await self._ws_server_updates.close_websockets()
+            await self._ws_server_whole.close_websockets()
+
             await self._app.shutdown()
-            await self._handler.shutdown()
             await self._app.cleanup()
             self.listener.connection_lost(self, "closed upon request")
 
         asyncio.run_coroutine_threadsafe(_close(), self.loop)
 
-    async def ws_updates_handler(self, request):
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
-        self._active_ws_updates_sockets.append(ws)
-        self.log.info("{} : Incoming client connected to websocket {}".format(self, id(ws)))
+    async def on_update_message(self, ws: web.WebSocketResponse, ws_msg_from_client: aiohttp.WSMessage):
+        if ws_msg_from_client.type == aiohttp.WSMsgType.TEXT:
+            self.listener.message_received(self, ws_msg_from_client.json())
 
-        exc = None
-        try:
-            async for msg in ws:  # type: aiohttp.WSMessage
-                if msg.type == aiohttp.WSMsgType.TEXT:
-                    self.listener.message_received(self, msg.json())
+    async def on_whole_websocket(self, ws: web.WebSocketResponse):
+        ws.send_json(self.netmem)  # Send initial copy of entire netmem
+        async for ws_msg in ws:  # type: aiohttp.WSMessage
+            await self.on_whole_message(ws=ws, ws_msg_from_client=ws_msg)
 
-                elif msg.type == aiohttp.WSMsgType.ERROR:
-                    self.log.error("{} : Websocket {} connection error: {}".format(self, id(ws), ws.exception()))
-                    self.listener.connection_error(self, ws.exception())
-                    exc = ws.exception()
-                    self.close()
-
-        except Exception as e:
-            self.log.error("{} : Websocket {} connection error: {}".format(self, id(ws), e))
-            self.listener.connection_error(self, e)
-            exc = e
-        finally:
-            self.log.info("{} : Client disconnected from websocket connection {}".format(self, id(ws)))
-            ws.close()
-            self._active_ws_updates_sockets.remove(ws)
-        return ws
-
-    async def ws_whole_handler(self, request):
-        ws = web.WebSocketResponse()
-        await ws.prepare(request)
-        self._active_ws_whole_sockets.append(ws)
-        self.log.info("{} : Incoming client connected to websocket {}".format(self, id(ws)))
-
-        exc = None
-        try:
-            if self.netmem is not None:
-                ws.send_json(self.netmem)
-
-            async for msg in ws:  # type: aiohttp.WSMessage
-                if msg.type == aiohttp.WSMsgType.TEXT:
-                    self.listener.message_received(self, msg.json())
-                    self.log.info("{} : Unexpected incoming message to ws_whole_handler: {}".format(self, msg.data))
-
-                elif msg.type == aiohttp.WSMsgType.ERROR:
-                    self.log.error("{} : Websocket {} connection error: {}".format(self, id(ws), ws.exception()))
-                    self.listener.connection_error(self, ws.exception())
-                    exc = ws.exception()
-                    self.close()
-
-        except Exception as e:
-            self.log.error("{} : Websocket {} connection error: {}".format(self, id(ws), e))
-            self.listener.connection_error(self, e)
-            exc = e
-        finally:
-            self.log.info("{} : Client disconnected from websocket connection {}".format(self, id(ws)))
-            ws.close()
-            self._active_ws_whole_sockets.remove(ws)
-        return ws
+    async def on_whole_message(self, ws: web.WebSocketResponse, ws_msg_from_client: aiohttp.WSMessage):
+        if ws_msg_from_client.type == aiohttp.WSMsgType.TEXT:
+            ws.send_json(self.netmem)  # Simply echo back complete contents whenever pinged
 
     async def html_view_handler(self, request):
         dir = os.path.dirname(__file__)
@@ -175,7 +140,7 @@ class WsClientConnector(Connector):
     def __repr__(self):
         return "{}({})".format(self.__class__.__name__, self.url)
 
-    def connect(self, listener: ConnectorListener, netmem_dict, loop: asyncio.BaseEventLoop=None) -> Connector:
+    def connect(self, listener: ConnectorListener, netmem_dict, loop: asyncio.BaseEventLoop = None) -> Connector:
         super().connect(listener, netmem_dict, loop=loop)
 
         async def _connect():
@@ -192,7 +157,8 @@ class WsClientConnector(Connector):
                             self.listener.message_received(self, msg.json())
 
                         elif msg.type == aiohttp.WSMsgType.ERROR:
-                            self.log.error("{} : Websocket {} connection error: {}".format(self, id(ws), ws.exception()))
+                            self.log.error(
+                                "{} : Websocket {} connection error: {}".format(self, id(ws), ws.exception()))
                             self.listener.connection_error(self, ws.exception())
 
                 except Exception as e:
@@ -208,7 +174,6 @@ class WsClientConnector(Connector):
 
         asyncio.run_coroutine_threadsafe(_connect(), loop=self.loop)
         return self
-
 
     def send_message(self, msg: dict):
         self.log.debug("Sending message to server on websocket {}".format(id(self.ws)))
