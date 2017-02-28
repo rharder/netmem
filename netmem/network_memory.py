@@ -21,9 +21,10 @@ Websocket protocol dictionary:
 import asyncio
 import logging
 import threading
+from abc import ABCMeta
 
 from .bindable_variable import BindableDict
-from .connector import Connector
+from .connector import Connector, ConnectorListener
 
 __author__ = "Robert Harder"
 __email__ = "rob@iharder.net"
@@ -31,7 +32,7 @@ __date__ = "2 Feb 2017"
 __license__ = "Public Domain"
 
 
-class NetworkMemory(BindableDict):
+class NetworkMemory(BindableDict, metaclass=ABCMeta):
     NAME_COUNTER = 1
 
     def __init__(self, **kwargs):
@@ -117,3 +118,5 @@ class NetworkMemory(BindableDict):
     def close_all(self):
         for connector in self._connectors.copy():  # type: Connector
             connector.close()
+
+NetworkMemory.register(ConnectorListener)

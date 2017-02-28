@@ -2,12 +2,7 @@
 
 import asyncio
 import json
-import os
-import socket
 
-import aiohttp
-from aiohttp import web
-from yarl import URL
 import asyncpushbullet
 
 from .connector import Connector, ConnectorListener
@@ -50,9 +45,11 @@ class PushbulletConnector(Connector):
                     _filter_dev = await self._account.async_get_device(self._device_nickname)
                     if _filter_dev is None:
                         _filter_dev = await self._account.async_new_device(nickname=self._device_nickname)
-                        self.log.info("Registered new device with nickname={}: {}".format(self._device_nickname, _filter_dev))
+                        self.log.info(
+                            "Registered new device with nickname={}: {}".format(self._device_nickname, _filter_dev))
                     else:
-                        self.log.info("Found existing device with nickname={}: {}".format(self._device_nickname, _filter_dev))
+                        self.log.info(
+                            "Found existing device with nickname={}: {}".format(self._device_nickname, _filter_dev))
 
                 # Callback for when it connects
                 async def _connected(push_listener):

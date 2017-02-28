@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from abc import ABCMeta
 
 __author__ = "Robert Harder"
 __email__ = "rob@iharder.net"
@@ -9,7 +10,7 @@ __date__ = "31 Jan 2017"
 __license__ = "Public Domain"
 
 
-class Connector(object):
+class Connector():
     def __init__(self):
         """
         receive message will be called thus: self.receive_message(self, data)
@@ -51,7 +52,7 @@ class Connector(object):
         pass
 
 
-class ConnectorListener(object):
+class ConnectorListener():
     """ Used more like a Java interface so that connectors know
     what methods to use for callbacks to NetworkMemory. """
 
