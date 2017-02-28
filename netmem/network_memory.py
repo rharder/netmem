@@ -28,7 +28,7 @@ from .connector import Connector, ConnectorListener
 
 __author__ = "Robert Harder"
 __email__ = "rob@iharder.net"
-__date__ = "2 Feb 2017"
+__date__ = "28 Feb 2017"
 __license__ = "Public Domain"
 
 
